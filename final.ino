@@ -7,6 +7,27 @@ const char* ssid = "DIRECT-NS-Hotspot";
 const char* password = "password";
 
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
+                      void *arg, uint8_t *data, size_t len) {
+  if (type == WS_EVT_DATA) {
+    String msg = "";
+    for (size_t i = 0; i < len; i++) {
+      msg += (char) data[i];
+    }
+    Serial.printf("Mensaje recibido: %s\n", msg.c_str());
+    if (msg.startsWith("HOLD_")) {
+      // Procesar presión prolongada
+      String direction = msg.substring(5);
+      // Lógica para manejar la dirección mantenida
+    } else if (msg.startsWith("CLICK_")) {
+      // Procesar clic simple
+      String direction = msg.substring(6);
+      // Lógica para manejar la dirección clicada
+    }
+  }
+}
 
 
 void setup() {
@@ -38,6 +59,10 @@ void setup() {
     request->send(SPIFFS, "/index.html", "text/html");
   });
 
+  server.on("/control", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/control.html", "text/html");
+  });
+
   // Ruta para CSS.
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
@@ -50,6 +75,9 @@ void setup() {
   server.on("/snake.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/games/snake/snake.js", "application/javascript");
   });
+  
+  ws.onEvent(onWebSocketEvent);
+  server.addHandler(&ws);
 
 
   // Iniciar servidor. 
@@ -58,5 +86,5 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  ws.cleanupClients();
 }
