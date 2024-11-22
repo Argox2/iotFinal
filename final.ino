@@ -3,8 +3,8 @@
 #include "ESPAsyncWebServer.h"
 #include "SPIFFS.h"
 
-const char* ssid = "DIRECT-NS-Hotspot";
-const char* password = "password";
+const char* ssid = "gaelr-hotspot";
+const char* password = "";
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -17,14 +17,9 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
       msg += (char) data[i];
     }
     Serial.printf("Mensaje recibido: %s\n", msg.c_str());
-    if (msg.startsWith("HOLD_")) {
-      // Procesar presión prolongada
-      String direction = msg.substring(5);
-      // Lógica para manejar la dirección mantenida
-    } else if (msg.startsWith("CLICK_")) {
-      // Procesar clic simple
-      String direction = msg.substring(6);
-      // Lógica para manejar la dirección clicada
+    if (msg.startsWith("MOVE_")) {
+      // Reenviar el mensaje a todos los clientes conectados
+      ws.textAll(msg);
     }
   }
 }

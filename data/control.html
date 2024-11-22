@@ -4,25 +4,64 @@
   <meta charset="UTF-8">
   <title>Control de Juegos</title>
   <style>
+    .controller {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .dpad {
+      display: grid;
+      grid-template-areas:
+        "up"
+        "left right"
+        "down";
+      gap: 10px;
+    }
     .button {
-      width: 100px;
-      height: 100px;
-      font-size: 24px;
-      margin: 10px;
+      width: 60px;
+      height: 60px;
+      background-color: #ccc;
+      border: 2px solid #000;
+      border-radius: 10px;
+      text-align: center;
+      line-height: 60px;
+      font-size: 20px;
+      user-select: none;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Control de Juegos</h1>
-  <div>
-    <button class="button" id="up">Arriba</button>
-  </div>
-  <div>
-    <button class="button" id="left">Izquierda</button>
-    <button class="button" id="right">Derecha</button>
-  </div>
-  <div>
-    <button class="button" id="down">Abajo</button>
+  <div class="controller">
+    <div class="dpad">
+      <div>
+          <button class="button" id="left" style="grid-area: left;">◀</button>
+      </div>
+      <div class="action-buttons">
+      <div>
+          <button class="button" id="up" style="grid-area: up;">▲</button>
+      </div>
+      <div>
+          <button class="button" id="down" style="grid-area: down;">▼</button>
+      </div>
+      </div>
+      <div>
+          <button class="button" id="right" style="grid-area: right;">▶</button>
+      </div>
+    </div>
+    <div class="action-buttons">
+      <div>
+          <button class="button" id="a" ">A</button>
+      </div>
+      <div>
+          <button class="button" id="b" ">B</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -32,32 +71,18 @@
       console.log('Conectado al servidor WebSocket');
     };
 
-    ws.onmessage = (event) => {
-      console.log(`Mensaje recibido: ${event.data}`);
-    };
-
     const buttons = document.querySelectorAll('.button');
-    let holdTimeout;
 
     buttons.forEach(button => {
       button.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        const direction = e.target.id.toUpperCase();
-        holdTimeout = setTimeout(() => {
-          sendDirection(direction, true);
-        }, 500); // 500 ms para considerar una presión prolongada
-      });
-
-      button.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        clearTimeout(holdTimeout);
-        const direction = e.target.id.toUpperCase();
-        sendDirection(direction, false);
+        const action = e.target.id.toUpperCase();
+        sendAction(action);
       });
     });
 
-    function sendDirection(direction, isHolding) {
-      const message = isHolding ? `HOLD_${direction}` : `CLICK_${direction}`;
+    function sendAction(action) {
+      const message = `MOVE_${action}`;
       ws.send(message);
     }
   </script>
