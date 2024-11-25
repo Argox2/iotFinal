@@ -3,6 +3,10 @@
  * MIT Licensed.
  */
 // Inspired by base2 and Prototype
+
+const ws = new WebSocket(`ws://${window.location.hostname}/ws`);
+
+
 (function(){
   var initializing = false, fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
  
@@ -90,7 +94,7 @@ var CANVAS_HEIGHT = 640;
 var SPRITE_SHEET_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAEACAYAAAADRnAGAAACGUlEQVR42u3aSQ7CMBAEQIsn8P+/hiviAAK8zFIt5QbELiTHmfEYE3L9mZE9AAAAqAVwBQ8AAAD6THY5CgAAAKbfbPX3AQAAYBEEAADAuZrC6UUyfMEEAIBiAN8OePXnAQAAsLcmmKFPAQAAgHMbm+gbr3Sdo/LtcAAAANR6GywPAgBAM4D2JXAAABoBzBjA7AmlOx8AAEAzAOcDAADovTc4vQim6wUCABAYQG8QAADd4dPd2fRVYQAAANQG0B4HAABAawDnAwAA6AXgfAAAALpA2uMAAABwPgAAgPoAM9Ci/R4AAAD2dmqcEQIAIC/AiQGuAAYAAECcRS/a/cJXkUf2AAAAoBaA3iAAALrD+gIAAADY9baX/nwAAADNADwFAADo9YK0e5FMX/UFACA5QPSNEAAAAHKtCekmDAAAAADvBljtfgAAAGgMMGOrunvCy2uCAAAACFU6BwAAwF6AGQPa/XsAAADYB+B8AAAAtU+ItD4OAwAAAFVhAACaA0T7B44/BQAAANALwGMQAAAAADYO8If2+P31AgAAQN0SWbhFDwCAZlXgaO1xAAAA1FngnA8AACAeQPSNEAAAAM4CnC64AAAA4GzN4N9NSfgKEAAAAACszO26X8/X6BYAAAD0Anid8KcLAAAAAAAAAJBnwNEvAAAA9Jns1ygAAAAAAAAAAAAAAAAAAABAQ4COCENERERERERERBrnAa1sJuUVr3rsAAAAAElFTkSuQmCC';
 var LEFT_KEY = 37;
 var RIGHT_KEY = 39;
-var SHOOT_KEY = 88;
+var SHOOT_KEY = 32;
 var TEXT_BLINK_FREQ = 500;
 var PLAYER_CLIP_RECT = { x: 0, y: 204, w: 62, h: 32 };
 var ALIEN_BOTTOM_ROW = [ { x: 0, y: 0, w: 51, h: 34 }, { x: 0, y: 102, w: 51, h: 34 }];
@@ -241,9 +245,35 @@ var SheetSprite = BaseSprite.extend({
   }
 });
 
+// Globals for controlling player actions
+let playerAction = {
+  left: false,
+  right: false,
+  shoot: false
+};
+
+// WebSocket event to handle messages
+ws.onmessage = (event) => {
+  const message = event.data.trim();
+
+  // Map incoming commands to player actions
+  if (message === "MOVE_LEFT") {
+    playerAction.left = true;
+    playerAction.right = false;
+  } else if (message === "MOVE_RIGHT") {
+    playerAction.right = true;
+    playerAction.left = false;
+  } else if (message === "MOVE_A") {
+    playerAction.shoot = true;
+  } else if (message === "MOVE_DOWN") {
+    playerAction.left = false;
+    playerAction.right = false;
+  }
+};
+
 var Player = SheetSprite.extend({
   init: function() {
-    this._super(spriteSheetImg, PLAYER_CLIP_RECT, CANVAS_WIDTH/2, CANVAS_HEIGHT - 70);
+    this._super(spriteSheetImg, PLAYER_CLIP_RECT, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 70);
     this.scale.set(0.85, 0.85);
     this.lives = 3;
     this.xVel = 0;
@@ -251,33 +281,36 @@ var Player = SheetSprite.extend({
     this.bulletDelayAccumulator = 0;
     this.score = 0;
   },
-  
+
   reset: function() {
     this.lives = 3;
     this.score = 0;
-    this.position.set(CANVAS_WIDTH/2, CANVAS_HEIGHT - 70);
+    this.position.set(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 70);
   },
-  
+
   shoot: function() {
     var bullet = new Bullet(this.position.x, this.position.y - this.bounds.h / 2, 1, 1000);
     this.bullets.push(bullet);
   },
-  
+
   handleInput: function() {
-    if (isKeyDown(LEFT_KEY)) {
+    // Handle player movement based on WebSocket input
+    if (playerAction.left) {
       this.xVel = -175;
-    } else if (isKeyDown(RIGHT_KEY)) {
+    } else if (playerAction.right) {
       this.xVel = 175;
-    } else this.xVel = 0;
-    
-    if (wasKeyPressed(SHOOT_KEY)) {
-      if (this.bulletDelayAccumulator > 0.5) {
-        this.shoot(); 
-        this.bulletDelayAccumulator = 0;
-      }
+    } else {
+      this.xVel = 0;
+    }
+
+    // Handle shooting
+    if (playerAction.shoot && this.bulletDelayAccumulator > 0.5) {
+      this.shoot();
+      this.bulletDelayAccumulator = 0;
+      playerAction.shoot = false; // Reset shoot action
     }
   },
-  
+
   updateBullets: function(dt) {
     for (var i = this.bullets.length - 1; i >= 0; i--) {
       var bullet = this.bullets[i];
@@ -289,23 +322,25 @@ var Player = SheetSprite.extend({
       }
     }
   },
-  
+
   update: function(dt) {
-    // update time passed between shots
+    // Update time passed between shots
     this.bulletDelayAccumulator += dt;
-    
-    // apply x vel
+
+    // Apply velocity to position
     this.position.x += this.xVel * dt;
-    
-    // cap player position in screen bounds
-    this.position.x = clamp(this.position.x, this.bounds.w/2, CANVAS_WIDTH - this.bounds.w/2);
+
+    // Cap player position within screen bounds
+    this.position.x = clamp(this.position.x, this.bounds.w / 2, CANVAS_WIDTH - this.bounds.w / 2);
+
+    // Update bullets
     this.updateBullets(dt);
   },
-  
+
   draw: function(resized) {
     this._super(resized);
 
-    // draw bullets
+    // Draw bullets
     for (var i = 0, len = this.bullets.length; i < len; i++) {
       var bullet = this.bullets[i];
       if (bullet.alive) {

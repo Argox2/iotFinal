@@ -70,6 +70,30 @@ void setup() {
   server.on("/snake.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/games/snake/snake.js", "application/javascript");
   });
+
+
+  // Rutas para pacman.
+  server.on("/snake", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/pacman/pacman.html", "text/html");
+  });
+  server.on("/modernizr.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/pacman/modernizr.min.js", "application/javascript");
+  });
+  server.on("/jquery.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/pacman/jquery.min.js", "application/javascript");
+  });
+
+
+  // Rutas para space invaders.
+  server.on("/space", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/space/space.html", "text/html");
+  });
+  server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/space/script.js", "application/javascript");
+  });
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/games/snake/style.js", "text/css");
+  });
   
   ws.onEvent(onWebSocketEvent);
   server.addHandler(&ws);
